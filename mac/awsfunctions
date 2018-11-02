@@ -13,28 +13,24 @@ getIAMkey () {
 
 readMFA () {
         if [ -z "$1" ]; then
-	  echo usage: readMFA \$env [Environment can be either prod or eng]
+	  echo usage: readMFA \$aws-profile 
           return 1
         fi
-      
+
+        # whoami
+        export AWS_PROFILE=$1
+        export AWS_ACCOUNT_ID=`aws sts get-caller-identity --profile ${AWS_PROFILE} --output=json | jq -r .Account`
+        export AWS_USER_ID=`aws iam get-user --profile ${AWS_PROFILE} --output=json | jq -r .User.UserName`
+        export AWS_MFA_SERIAL=`aws iam list-mfa-devices --user-name ${AWS_USER_ID} --profile ${AWS_PROFILE} --output=json | jq -r .MFADevices[0].SerialNumber`
 	# reset AWS credential in env
 	unset AWS_SESSION_TOKEN
-	# add AWS_SECURITY_TOKEN for old boto compatability
 	unset AWS_SECURITY_TOKEN
-	if [ $1 = "prod" ]; then
-	  setProd
-          echo -n "Put in your PRODUCTION virtual AWS token: "
-        elif [ $1 = "eng" ]; then  
-	  setNonProd
-	  echo -n "Put in your Engineering virtual AWS token: "
-        else
- 	  echo usage: $0 \$env [Environment can be either prod or eng]
-          return 1
-        fi
-        
+
+        echo -n "Put in your virtual AWS token for profile ${AWS_PROFILE}: "
 	read token
+
 	# update AWS credentials to temp STS values
-	aws_temp_creds=$(aws sts get-session-token --serial-number ${AWS_MFA_SERIAL} --output text --token-code $token | cut -f2,4,5)
+	aws_temp_creds=$(aws sts get-session-token --serial-number ${AWS_MFA_SERIAL} --output text --profile ${AWS_PROFILE} --token-code $token | cut -f2,4,5)
 	aws_temp_array=($aws_temp_creds)
 	export AWS_ACCESS_KEY_ID=${aws_temp_array[0]}
 	export AWS_SECRET_ACCESS_KEY=${aws_temp_array[1]}
