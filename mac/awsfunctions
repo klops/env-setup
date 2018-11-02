@@ -1,0 +1,45 @@
+# helper shell functions
+
+jsonval () {
+        json=$1
+        prop=$2
+        temp=`echo $json | sed 's/\\\\\//\//g' | sed 's/[{}]//g' | awk -v k="text" '{n=split($0,a,","); for (i=1; i<=n; i++) print a[i]}' | sed 's/\"\:\"/\|/g' | sed 's/[\,]/ /g' | sed 's/\"//g' | grep -w $prop | cut -d":" -f2| sed -e 's/^ *//g' -e 's/ *$//g' `
+        echo ${temp##*|}
+        }
+
+getIAMkey () {
+       for user in `aws iam list-users --query "Users[*].UserName" --output=text ` ; do aws iam list-access-keys --user-name $user --output=text; done
+}
+
+readMFA () {
+        if [ -z "$1" ]; then
+	  echo usage: readMFA \$env [Environment can be either prod or eng]
+          return 1
+        fi
+      
+	# reset AWS credential in env
+	unset AWS_SESSION_TOKEN
+	# add AWS_SECURITY_TOKEN for old boto compatability
+	unset AWS_SECURITY_TOKEN
+	if [ $1 = "prod" ]; then
+	  setProd
+          echo -n "Put in your PRODUCTION virtual AWS token: "
+        elif [ $1 = "eng" ]; then  
+	  setNonProd
+	  echo -n "Put in your Engineering virtual AWS token: "
+        else
+ 	  echo usage: $0 \$env [Environment can be either prod or eng]
+          return 1
+        fi
+        
+	read token
+	# update AWS credentials to temp STS values
+	aws_temp_creds=$(aws sts get-session-token --serial-number ${AWS_MFA_SERIAL} --output text --token-code $token | cut -f2,4,5)
+	aws_temp_array=($aws_temp_creds)
+	export AWS_ACCESS_KEY_ID=${aws_temp_array[0]}
+	export AWS_SECRET_ACCESS_KEY=${aws_temp_array[1]}
+	export AWS_SESSION_TOKEN=${aws_temp_array[2]}
+        export AWS_SECURITY_TOKEN=${aws_temp_array[2]}
+	
+}
+
