@@ -34,3 +34,5 @@ source <(kubectl completion bash)
 
 # local setup
 source ~/.aws/awsfunctions
+export PS1="\h:\W \u [AWS_profile:\$AWS_PROFILE] $ "
+
