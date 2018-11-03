@@ -32,4 +32,5 @@ source <(kops completion bash)
 source $(brew --prefix)/etc/bash_completion
 source <(kubectl completion bash)
 
-
+# local setup
+source ~/.aws/awsfunctions
