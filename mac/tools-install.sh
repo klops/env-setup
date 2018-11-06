@@ -20,6 +20,7 @@ for brew_packages in \
   kops \
   kubernetes-cli \
   kubernetes-helm \
+  postgresql \
   python \
   readline \
   terraforming \
